@@ -1,0 +1,32 @@
+---
+title: "Longley-Cook Credibility"
+author: "Rajesh Sahasrabuddhe"
+date: "January 23, 2016"
+output: html_document
+---
+
+In _"An Introduction to Credibility Theory"_ L.H. Longley Cook presents a discussion of full credibility standards. On page 200, he provides a table a table of the _Number of Claims Required_ to acheive full credibility. Where full credibility is established such that the observed value has a maximum departure ($k$) from the true value with probability $\alpha$. That table may be developed as follows:
+```{r}
+alpha <- c(.99, .95, .90); alpha
+two_sided <- 1 - (1 - alpha)/2; two_sided
+z_scores <- qnorm(two_sided); z_scores
+df_z <- data.frame(alpha = alpha , two_sided = two_sided, z_scores = z_scores); df_z
+k <- 0.025 * 1:4
+```
+
+We are using $\bar{X}$, the sample mean, to estimate $\mu$, the true mean. $\bar{X}$ is the mean of $N$ observations. Assuming that each observation has a distribution with variance, $\sigma^2$, then the variance of the average of $N$ obesrvations is $\dfrac{Var(X)}{N}$. Then, under the Central Limit Theorem, $\dfrac{\bar{X} - \mu}{SD(X)  \sqrt{N}}$ has standard normal distribution. So for a $k$ departure of $\bar{X}$ from $\mu$, we have $N = (\dfrac{Z}{k} \times \dfrac{\sigma}{\mu}) ^ 2$.
+
+You can also embed plots, for example:
+
+```{r}
+lc_table <- expand.grid(two_sided, k)
+names(lc_table) <- c("two_sided", "k")
+lc_table <- merge(lc_table, df_z)
+lc_table$number_claims_reqd <- with(data = lc_table, round((z_scores / k) ^ 2))
+lc_table <- lc_table[order(lc_table$k, lc_table$alpha),]
+lc_table
+matrix(data = lc_table$number_claims_reqd, nrow = 4, byrow = TRUE, 
+  dimnames = list(k, alpha))
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
