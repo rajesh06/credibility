@@ -14,9 +14,9 @@ df_z <- data.frame(alpha = alpha , two_sided = two_sided, z_scores = z_scores); 
 k <- 0.025 * 1:4
 ```
 
-We are using $\bar{X}$, the sample mean, to estimate $\mu$, the true mean. $\bar{X}$ is the mean of $N$ observations. Assuming that each observation has a distribution with variance, $\sigma^2$, then the variance of the average of $N$ obesrvations is $\dfrac{Var(X)}{N}$. Then, under the Central Limit Theorem, $\dfrac{\bar{X} - \mu}{SD(X)  \sqrt{N}}$ has standard normal distribution. So for a $k$ departure of $\bar{X}$ from $\mu$, we have $N = (\dfrac{Z}{k} \times \dfrac{\sigma}{\mu}) ^ 2$.
+In the example $X$ is the number of claim counts and is Poisson distributed. $N$ is the number of observationso fo $X$. 
 
-You can also embed plots, for example:
+We are using $\bar{X}$, the sample mean, to estimate $\mu$, the true mean. $\bar{X}$ is the mean of $N$ observations. Assuming that each observation has a distribution with variance, $\sigma^2$, then the variance of the average of $N$ obesrvations is $\dfrac{Var(X)}{N}$. Then, under the Central Limit Theorem, $\dfrac{\bar{X} - \mu}{\sigma_x \div  \sqrt{N}}$ has standard normal distribution. So for a $k$ departure of $\bar{X}$ from $\mu$, we have an expected number of claims for $N$ observations with an average frequency of $\bar{X}$ as follows $N \times \mu  = (\dfrac{Z}{k}) ^2 \times \dfrac{\sigma^2}{\mu}$.
 
 ```{r}
 lc_table <- expand.grid(two_sided, k)
@@ -29,4 +29,42 @@ matrix(data = lc_table$number_claims_reqd, nrow = 4, byrow = TRUE,
   dimnames = list(k, alpha))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+In the case of frequency trend, we can assume that the $X_0$ is distributed Poisson($\lambda$) and $X_1$ is distributed Possion($\lambda ( 1+ t)$), where t is the frequency trend. Using the formula abaove, we get an expected number of claims equal to $(\dfrac{Z}{k}) ^2 \times \dfrac{\lambda}{1+t} \times Var(\dfrac{X_1}{X_0})$. The latter two terms, together, represnt the multiplier, relative to the full credibilility standard for cliam counts. We can determine these multipliers via simulation looking at trend rates from 1% to 10% and lambda values of 10, 25, 50, 100 and 500, we get:
+
+
+```{r}
+mult_table <- expand.grid(trend = (1:10) / 1000, lambda_0 = c(10, 25, 50, 100, 500))
+mult_table$lambda_1 <- with(data = mult_table, (1+trend) * lambda_0)
+mult_table$multiplier <- NA
+
+for (i in 1:nrow(mult_table)) {
+  mult_table$multiplier[i] <- with(data = mult_table,
+    var(rpois(n = 1000, lambda = lambda_1[i]) / rpois(n = 1000, lambda = lambda_0[i])) *
+    lambda_0[i] / (1+trend[i])^2)
+}
+head(mult_table)
+hist(mult_table$multiplier, main = "Distribution of Multipliers (multiplicative trend model)")
+```
+
+Note: we need to use "large" expected claim counts to avoid the simulation of 0 values. (0 values which prevents the estimation of the variance.)
+
+Of note, Longley-Cook describes an additive trend model. We can use more normal claim count expectations in this case. And we get:
+
+
+```{r}
+mult_table <- expand.grid(trend = (1:10) / 1000, lambda_0 = c(1, 2, 3))
+mult_table$lambda_1 <- with(data = mult_table, (1+trend) * lambda_0)
+mult_table$multiplier <- NA
+
+for (i in 1:nrow(mult_table)) {
+  mult_table$multiplier[i] <- with(data = mult_table,
+    var(rpois(n = 1000, lambda = lambda_1[i]) - rpois(n = 1000, lambda = lambda_0[i])) / 
+      mean((rpois(n = 1000, lambda = lambda_1[i]) - rpois(n = 1000, lambda = lambda_0[i]))^2) *
+      mean(rpois(n = 1000, lambda = lambda_0[i]))
+    ) 
+}
+head(mult_table)
+hist(mult_table$multiplier, main = "Distribution of Multipliers (additive trend model)")
+```
+
+**So it would seem that the required multiplier of 2 to the full credibility standard for claim frequency was pretty reasonable.**
